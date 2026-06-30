@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Subir preguntas</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>⚙️ Administrar preguntas</h1>
+
+      <p class="muted">
+        Trivia actual: <strong>{{ current_title }}</strong>
+        ({{ current_count }} pregunta{{ 's' if current_count != 1 else '' }})
+      </p>
+
+      <hr style="border-color: rgba(255,255,255,.1); margin: 20px 0;">
+
+      <h3>Subir nuevo archivo de preguntas (.json)</h3>
+
+      <form id="uploadForm">
+        <input type="password" id="password" placeholder="Contraseña de administrador" required>
+        <input type="file" id="quizFile" accept=".json,application/json" required
+               style="background:#fff; color:#222; padding:10px; border-radius:10px; width:100%; margin-bottom:14px;">
+        <button type="submit" style="width:100%;">Subir y reemplazar preguntas</button>
+      </form>
+
+      <p id="statusMsg" style="margin-top:14px;"></p>
+
+      <hr style="border-color: rgba(255,255,255,.1); margin: 20px 0;">
+
+      <h3>Formato esperado del archivo .json</h3>
+      <p class="muted">Copia esta estructura como punto de partida:</p>
+      <pre style="background:#15152e; padding:14px; border-radius:10px; overflow-x:auto; font-size:.8rem;">{
+  "title": "Nombre de tu trivia",
+  "time_per_question": 20,
+  "questions": [
+    {
+      "question": "¿Cuál es la capital de Perú?",
+      "options": ["Lima", "Cusco", "Arequipa", "Trujillo"],
+      "correct": 0
+    }
+  ]
+}</pre>
+      <p class="muted">
+        <code>correct</code> es el número de posición (empezando en 0) de la opción correcta
+        dentro de <code>options</code>. Puedes incluir tantas preguntas como quieras dentro de la lista.
+      </p>
+
+      <p class="muted center" style="margin-top:24px;">
+        <a href="/host" style="color:var(--accent2);">← Volver al panel del organizador</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('uploadForm');
+    const statusMsg = document.getElementById('statusMsg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusMsg.textContent = 'Subiendo…';
+      statusMsg.style.color = 'var(--muted)';
+
+      const password = document.getElementById('password').value;
+      const fileInput = document.getElementById('quizFile');
+      const file = fileInput.files[0];
+
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('password', password);
+      formData.append('quiz_file', file);
+
+      try {
+        const res = await fetch('/api/upload_quiz', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.ok) {
+          statusMsg.style.color = '#6fcf97';
+          statusMsg.textContent = `✅ Listo. "${data.title}" cargada con ${data.count} preguntas.`;
+          form.reset();
+        } else {
+          statusMsg.style.color = '#ff8585';
+          statusMsg.textContent = `❌ ${data.error}`;
+        }
+      } catch (err) {
+        statusMsg.style.color = '#ff8585';
+        statusMsg.textContent = '❌ Ocurrió un error al subir el archivo.';
+      }
+    });
+  </script>
+</body>
+</html>

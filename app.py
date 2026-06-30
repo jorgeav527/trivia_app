@@ -16,6 +16,7 @@ Luego abre:
 """
 
 import json
+import os
 import random
 import string
 import time
@@ -25,6 +26,11 @@ from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, join_room, emit
 
 BASE_DIR = Path(__file__).resolve().parent
+QUIZ_PATH = BASE_DIR / "data" / "preguntas.json"
+
+# Contraseña para poder subir nuevas preguntas desde /admin.
+# En Render: Settings > Environment > agrega ADMIN_PASSWORD con tu propia clave.
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "cambia-esta-clave")
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "cambia-esto-por-algo-secreto"
@@ -39,8 +45,41 @@ GAMES = {}  # { room_code: GameState }
 
 
 def cargar_preguntas():
-    with open(BASE_DIR / "data" / "preguntas.json", encoding="utf-8") as f:
+    with open(QUIZ_PATH, encoding="utf-8") as f:
         return json.load(f)
+
+
+def validar_quiz(data):
+    """Valida que el JSON subido tenga la estructura correcta.
+    Devuelve (es_valido, mensaje_error)."""
+    if not isinstance(data, dict):
+        return False, "El archivo debe ser un objeto JSON (con llaves { })."
+
+    if "title" not in data or not isinstance(data["title"], str) or not data["title"].strip():
+        return False, "Falta el campo 'title' (texto) o está vacío."
+
+    if "questions" not in data or not isinstance(data["questions"], list) or len(data["questions"]) == 0:
+        return False, "Falta el campo 'questions' (lista) o está vacío."
+
+    time_per_question = data.get("time_per_question", 20)
+    if not isinstance(time_per_question, (int, float)) or time_per_question <= 0:
+        return False, "'time_per_question' debe ser un número mayor a 0."
+
+    for i, q in enumerate(data["questions"], start=1):
+        if not isinstance(q, dict):
+            return False, f"La pregunta #{i} no es un objeto válido."
+        if "question" not in q or not isinstance(q["question"], str) or not q["question"].strip():
+            return False, f"La pregunta #{i} no tiene texto en 'question'."
+        if "options" not in q or not isinstance(q["options"], list) or len(q["options"]) < 2:
+            return False, f"La pregunta #{i} debe tener al menos 2 opciones en 'options'."
+        if not all(isinstance(opt, str) and opt.strip() for opt in q["options"]):
+            return False, f"La pregunta #{i} tiene una opción vacía o no es texto."
+        if "correct" not in q or not isinstance(q["correct"], int):
+            return False, f"La pregunta #{i} no tiene 'correct' (número) indicando la opción correcta."
+        if not (0 <= q["correct"] < len(q["options"])):
+            return False, f"La pregunta #{i}: 'correct' debe ser un índice válido de 'options' (0 a {len(q['options']) - 1})."
+
+    return True, ""
 
 
 class GameState:
@@ -118,6 +157,52 @@ def host():
 def play(room_code):
     """Pantalla del jugador ya dentro de una sala."""
     return render_template("player.html", room_code=room_code.upper())
+
+
+@app.route("/admin")
+def admin():
+    """Pantalla para subir un nuevo banco de preguntas (.json)."""
+    quiz_data = cargar_preguntas()
+    return render_template(
+        "admin.html",
+        current_title=quiz_data.get("title", ""),
+        current_count=len(quiz_data.get("questions", [])),
+    )
+
+
+@app.route("/api/upload_quiz", methods=["POST"])
+def api_upload_quiz():
+    password = request.form.get("password", "")
+    if password != ADMIN_PASSWORD:
+        return jsonify({"ok": False, "error": "Contraseña incorrecta."}), 401
+
+    file = request.files.get("quiz_file")
+    if not file or file.filename == "":
+        return jsonify({"ok": False, "error": "No se seleccionó ningún archivo."}), 400
+
+    try:
+        raw = file.read().decode("utf-8")
+        data = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        return jsonify({"ok": False, "error": f"El archivo no es un JSON válido: {e}"}), 400
+
+    es_valido, error = validar_quiz(data)
+    if not es_valido:
+        return jsonify({"ok": False, "error": error}), 400
+
+    # Aseguramos que time_per_question tenga un valor por defecto
+    data.setdefault("time_per_question", 20)
+
+    with open(QUIZ_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    return jsonify(
+        {
+            "ok": True,
+            "title": data["title"],
+            "count": len(data["questions"]),
+        }
+    )
 
 
 @app.route("/api/create_room", methods=["POST"])
