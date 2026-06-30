@@ -1,0 +1,31 @@
+{
+  "title": "Trivia de Cultura General",
+  "time_per_question": 20,
+  "questions": [
+    {
+      "question": "¿Cuál es la capital de Perú?",
+      "options": ["Lima", "Cusco", "Arequipa", "Trujillo"],
+      "correct": 0
+    },
+    {
+      "question": "¿Cuántos continentes hay?",
+      "options": ["5", "6", "7", "8"],
+      "correct": 2
+    },
+    {
+      "question": "¿Quién pintó la Mona Lisa?",
+      "options": ["Picasso", "Da Vinci", "Van Gogh", "Miguel Ángel"],
+      "correct": 1
+    },
+    {
+      "question": "¿Cuál es el planeta más cercano al sol?",
+      "options": ["Venus", "Tierra", "Mercurio", "Marte"],
+      "correct": 2
+    },
+    {
+      "question": "¿En qué año llegó el hombre a la Luna?",
+      "options": ["1965", "1969", "1972", "1959"],
+      "correct": 1
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trivia - Jugador</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="score-badge" id="scoreBadge" style="display:none;">0 pts</div>
+
+  <div class="wrap">
+
+    <!-- Esperando a que inicie -->
+    <div class="card" id="waitingScreen">
+      <h2 id="waitingTitle">Conectando…</h2>
+      <p class="muted">Espera a que el organizador inicie la trivia.</p>
+    </div>
+
+    <!-- Pregunta activa -->
+    <div class="card" id="questionScreen" style="display:none;">
+      <p class="muted">Pregunta <span id="qIndex"></span>/<span id="qTotal"></span></p>
+      <h2 id="questionText"></h2>
+      <div class="timer-bar-bg"><div class="timer-bar" id="timerBar"></div></div>
+      <div class="options-grid" id="optionsGrid"></div>
+      <p class="muted center" id="answeredMsg" style="display:none; margin-top:14px;">
+        ✅ Respuesta enviada. Esperando a los demás…
+      </p>
+    </div>
+
+    <!-- Resultado de la pregunta -->
+    <div class="card" id="resultScreen" style="display:none;">
+      <h2 id="resultTitle"></h2>
+      <p id="resultPoints" class="muted"></p>
+      <h3 style="margin-top:20px;">Ranking</h3>
+      <div id="leaderboardDiv"></div>
+    </div>
+
+    <!-- Fin del juego -->
+    <div class="card" id="finishedScreen" style="display:none;">
+      <h2>🎊 ¡Trivia finalizada!</h2>
+      <div id="finalLeaderboardDiv"></div>
+    </div>
+
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    const ROOM_CODE = "{{ room_code }}";
+  </script>
+  <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+</body>
+</html>

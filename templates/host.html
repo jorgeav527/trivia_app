@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Host - Trivia en vivo</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="wrap" style="max-width: 920px;">
+
+    <!-- PANTALLA: crear sala -->
+    <div class="card" id="setupScreen">
+      <h1>🖥️ Panel del organizador</h1>
+      <p class="muted">Crea una sala nueva y proyecta esta pantalla para que los jugadores vean las preguntas.</p>
+      <button id="createRoomBtn">Crear sala nueva</button>
+    </div>
+
+    <!-- PANTALLA: lobby esperando jugadores -->
+    <div class="card" id="lobbyScreen" style="display:none;">
+      <h2 id="quizTitle"></h2>
+      <p class="muted">Los jugadores entran en <strong id="hostUrlText"></strong> con este código:</p>
+      <div class="room-code" id="roomCodeDisplay"></div>
+      <p class="flex-between">
+        <span>Jugadores conectados: <strong id="playerCount">0</strong></span>
+        <button id="startGameBtn">Iniciar trivia ▶</button>
+      </p>
+      <div class="players-list" id="playersList"></div>
+    </div>
+
+    <!-- PANTALLA: pregunta activa -->
+    <div class="card" id="questionScreen" style="display:none;">
+      <div class="flex-between">
+        <span class="muted">Pregunta <span id="qIndex"></span>/<span id="qTotal"></span></span>
+        <span class="muted"><span id="answeredCount">0</span>/<span id="totalPlayers">0</span> respondieron</span>
+      </div>
+      <h2 id="questionText" style="margin-top:10px;"></h2>
+      <div class="timer-bar-bg"><div class="timer-bar" id="timerBar"></div></div>
+
+      <div id="liveCounts"></div>
+
+      <div class="options-grid" id="optionsGrid"></div>
+
+      <button id="closeNowBtn" style="margin-top:18px;">Cerrar pregunta ahora</button>
+    </div>
+
+    <!-- PANTALLA: revelar respuesta correcta -->
+    <div class="card" id="revealScreen" style="display:none;">
+      <h2>Respuesta correcta</h2>
+      <div id="revealOptionsGrid" class="options-grid"></div>
+
+      <h3 style="margin-top:24px;">🏆 Ranking</h3>
+      <div id="leaderboardDiv"></div>
+
+      <button id="nextQuestionBtn" style="margin-top:18px;">Siguiente pregunta ▶</button>
+    </div>
+
+    <!-- PANTALLA: fin del juego -->
+    <div class="card" id="finishedScreen" style="display:none;">
+      <h2>🎊 ¡Trivia finalizada!</h2>
+      <h3>Ranking final</h3>
+      <div id="finalLeaderboardDiv"></div>
+      <button onclick="location.reload()" style="margin-top:18px;">Crear otra sala</button>
+    </div>
+
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="{{ url_for('static', filename='js/host.js') }}"></script>
+</body>
+</html>

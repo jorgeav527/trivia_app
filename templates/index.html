@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unirme a la Trivia</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>🎉 Unirme a la Trivia</h1>
+      <p class="muted">Ingresa el código de sala que te muestra el organizador y tu nombre.</p>
+
+      <input id="roomCode" placeholder="CÓDIGO DE SALA" maxlength="6" style="text-transform:uppercase; text-align:center; font-size:1.4rem; letter-spacing:4px;">
+      <input id="playerName" placeholder="Tu nombre" maxlength="20">
+
+      <button id="joinBtn" style="width:100%;">Entrar a la sala</button>
+      <p id="errorMsg" style="color:#ff8585; margin-top:12px;"></p>
+
+      <p class="muted center" style="margin-top:24px;">
+        ¿Eres el organizador? <a href="/host" style="color:var(--accent2);">Crea una sala aquí</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const roomInput = document.getElementById('roomCode');
+    const nameInput = document.getElementById('playerName');
+    const joinBtn = document.getElementById('joinBtn');
+    const errorMsg = document.getElementById('errorMsg');
+
+    roomInput.addEventListener('input', () => {
+      roomInput.value = roomInput.value.toUpperCase();
+    });
+
+    joinBtn.addEventListener('click', async () => {
+      const room = roomInput.value.trim().toUpperCase();
+      const name = nameInput.value.trim();
+      errorMsg.textContent = '';
+
+      if (!room || !name) {
+        errorMsg.textContent = 'Completa el código de sala y tu nombre.';
+        return;
+      }
+
+      const res = await fetch(`/api/check_room/${room}`);
+      const data = await res.json();
+
+      if (!data.exists) {
+        errorMsg.textContent = 'No existe esa sala. Verifica el código.';
+        return;
+      }
+
+      sessionStorage.setItem('playerName', name);
+      window.location.href = `/play/${room}`;
+    });
+
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') joinBtn.click();
+    });
+  </script>
+</body>
+</html>
