@@ -37,7 +37,7 @@ body {
 }
 
 h1 { color: var(--azul-ceruleo); margin: 0 0 12px; }
-h2, h3 { color: var(--azul-tradicional); margin: 0 0 12px; }
+h2, h3 { color: var(--gris-corporativo); margin: 0 0 12px; }
 
 .card {
   background: var(--panel);
@@ -112,7 +112,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   font-weight: 600;
 }
 
-.opt-0 { background: var(--rojo-labios); color: var(--gris-corporativo); }
+.opt-0 { background: var(--rojo-labios); }
 .opt-1 { background: var(--azul-tradicional); color: var(--blanco-humo); }
 .opt-2 { background: var(--amapola-dorada); color: var(--gris-corporativo); }
 .opt-3 { background: var(--gris-corporativo); color: var(--blanco-humo); }
@@ -136,7 +136,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 
 .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-.bar-label { width: 140px; font-size:.85rem; font-weight: 600; color: var(--azul-tradicional); }
+.bar-label { width: 140px; font-size:.85rem; font-weight: 600; color: var(--gris-corporativo); }
 .bar-outer { flex:1; background: rgba(0,0,0,.08); border-radius: 8px; height: 20px; overflow:hidden;}
 .bar-inner { height:100%; background: var(--azul-ceruleo); transition: width .3s ease; }
 
