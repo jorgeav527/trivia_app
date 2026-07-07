@@ -99,6 +99,14 @@ socket.on('reveal_answer', (data) => {
     document.getElementById('resultPoints').textContent = '';
   }
 
+  const explanationBox = document.getElementById('explanationBox');
+  if (data.explanation && data.explanation.trim()) {
+    explanationBox.textContent = `💡 ${data.explanation}`;
+    explanationBox.style.display = 'block';
+  } else {
+    explanationBox.style.display = 'none';
+  }
+
   renderLeaderboard('leaderboardDiv', data.leaderboard);
 });
 

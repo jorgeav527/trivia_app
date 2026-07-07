@@ -15,14 +15,17 @@ Luego abre:
     http://localhost:5000/          -> pantalla para que los jugadores se unan
 """
 
+import csv
+import io
 import json
 import os
 import random
 import string
 import time
+from functools import wraps
 from pathlib import Path
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from flask_socketio import SocketIO, join_room, emit
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -32,9 +35,27 @@ QUIZ_PATH = BASE_DIR / "data" / "preguntas.json"
 # En Render: Settings > Environment > agrega ADMIN_PASSWORD con tu propia clave.
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "cambia-esta-clave")
 
+# Contraseña para poder crear salas como organizador (host).
+# En Render: Settings > Environment > agrega HOST_PASSWORD con tu propia clave.
+HOST_PASSWORD = os.environ.get("HOST_PASSWORD", "cambia-esta-clave-host")
+
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "cambia-esto-por-algo-secreto"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "cambia-esto-por-algo-secreto")
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+
+def is_host_authenticated():
+    return bool(session.get("is_host"))
+
+
+def host_login_required(f):
+    """Protege rutas HTTP que solo el organizador autenticado puede usar."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not is_host_authenticated():
+            return jsonify({"error": "No autorizado. Inicia sesión como organizador en /host."}), 401
+        return f(*args, **kwargs)
+    return wrapper
 
 # ----------------------------------------------------------------------
 # Estado del juego en memoria (suficiente para una sola sala o varias
@@ -78,6 +99,8 @@ def validar_quiz(data):
             return False, f"La pregunta #{i} no tiene 'correct' (número) indicando la opción correcta."
         if not (0 <= q["correct"] < len(q["options"])):
             return False, f"La pregunta #{i}: 'correct' debe ser un índice válido de 'options' (0 a {len(q['options']) - 1})."
+        if "explanation" in q and not isinstance(q["explanation"], str):
+            return False, f"La pregunta #{i}: 'explanation' debe ser texto."
 
     return True, ""
 
@@ -91,8 +114,9 @@ class GameState:
         self.current_index = -1          # -1 = aún no empezó
         self.question_start_time = None
         self.players = {}                # sid -> {"name": str, "score": int}
-        self.answers = {}                # sid -> {"option": int, "time_taken": float}
+        self.answers = {}                # sid -> {"option": int, "time_taken": float, "points": int}
         self.status = "lobby"            # lobby | question | reveal | finished
+        self.history = []                # resultados de cada pregunta ya cerrada (para exportar)
 
     # -------- helpers --------
     def current_question(self):
@@ -147,10 +171,30 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/host")
+@app.route("/host", methods=["GET", "POST"])
 def host():
-    """Pantalla del organizador: crea la sala y controla el avance."""
-    return render_template("host.html")
+    """Pantalla del organizador: crea la sala y controla el avance.
+    Protegida con contraseña (HOST_PASSWORD) mediante sesión de Flask."""
+    login_error = None
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        if password == HOST_PASSWORD:
+            session["is_host"] = True
+            return redirect(url_for("host"))
+        login_error = "Contraseña incorrecta."
+
+    return render_template(
+        "host.html",
+        authenticated=is_host_authenticated(),
+        login_error=login_error,
+    )
+
+
+@app.route("/host/logout")
+def host_logout():
+    session.pop("is_host", None)
+    return redirect(url_for("host"))
 
 
 @app.route("/play/<room_code>")
@@ -206,6 +250,7 @@ def api_upload_quiz():
 
 
 @app.route("/api/create_room", methods=["POST"])
+@host_login_required
 def api_create_room():
     quiz_data = cargar_preguntas()
     room_code = generar_codigo_sala()
@@ -218,6 +263,56 @@ def api_check_room(room_code):
     room_code = room_code.upper()
     exists = room_code in GAMES
     return jsonify({"exists": exists})
+
+
+@app.route("/api/export_results/<room_code>")
+@host_login_required
+def api_export_results(room_code):
+    """Genera un CSV descargable (se abre directo en Excel) con el ranking
+    final y el detalle de respuestas de cada jugador por pregunta."""
+    room_code = room_code.upper()
+    game = GAMES.get(room_code)
+    if not game:
+        return jsonify({"error": "La sala no existe."}), 404
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    header = ["Puesto", "Nombre", "Puntaje total"]
+    for h in game.history:
+        header.append(f"P{h['index'] + 1}: Respuesta")
+        header.append(f"P{h['index'] + 1}: ¿Correcta?")
+        header.append(f"P{h['index'] + 1}: Puntos")
+    writer.writerow(header)
+
+    ranking = sorted(game.players.values(), key=lambda p: p["score"], reverse=True)
+
+    for rank, pdata in enumerate(ranking, start=1):
+        row = [rank, pdata["name"], pdata["score"]]
+        for h in game.history:
+            result = next((r for r in h["results"] if r["name"] == pdata["name"]), None)
+            if result:
+                opt_index = result["option"]
+                opt_text = h["options"][opt_index] if 0 <= opt_index < len(h["options"]) else ""
+                row.append(opt_text)
+                row.append("Sí" if result["correct"] else "No")
+                row.append(result.get("points", 0))
+            else:
+                row.append("Sin respuesta")
+                row.append("—")
+                row.append(0)
+        writer.writerow(row)
+
+    # BOM para que Excel detecte UTF-8 y muestre bien las tildes/ñ.
+    csv_data = "\ufeff" + output.getvalue()
+
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="resultados_{room_code}.csv"'
+        },
+    )
 
 
 # ----------------------------------------------------------------------
@@ -249,6 +344,10 @@ def on_join_as_player(data):
 
 @socketio.on("join_as_host")
 def on_join_as_host(data):
+    if not session.get("is_host"):
+        emit("error_message", {"message": "No autorizado. Inicia sesión como organizador."})
+        return
+
     room_code = data.get("room_code", "").upper().strip()
     game = GAMES.get(room_code)
     if not game:
@@ -264,6 +363,10 @@ def on_join_as_host(data):
 @socketio.on("start_question")
 def on_start_question(data):
     """El host pide avanzar a la siguiente pregunta."""
+    if not session.get("is_host"):
+        emit("error_message", {"message": "No autorizado."})
+        return
+
     room_code = data.get("room_code", "").upper().strip()
     game = GAMES.get(room_code)
     if not game:
@@ -314,13 +417,13 @@ def on_submit_answer(data):
     elapsed = time.time() - game.question_start_time
     time_left_ratio = max(0.0, 1 - (elapsed / game.time_per_question))
 
-    game.answers[sid] = {"option": option, "time_taken": round(elapsed, 2)}
-
     # Puntaje: 1000 puntos máximo, escalado por velocidad; 0 si falla
     q = game.current_question()
     is_correct = option == q["correct"]
     points = int(1000 * time_left_ratio) if is_correct else 0
     game.players[sid]["score"] += points
+
+    game.answers[sid] = {"option": option, "time_taken": round(elapsed, 2), "points": points}
 
     emit("answer_received", {"option": option})  # confirmación al jugador
 
@@ -339,6 +442,9 @@ def on_submit_answer(data):
 @socketio.on("close_question_now")
 def on_close_question_now(data):
     """El host fuerza el cierre de la pregunta antes de que acabe el tiempo."""
+    if not session.get("is_host"):
+        emit("error_message", {"message": "No autorizado."})
+        return
     room_code = data.get("room_code", "").upper().strip()
     close_question(room_code)
 
@@ -358,13 +464,26 @@ def close_question(room_code):
                 "option": ans["option"],
                 "time_taken": ans["time_taken"],
                 "correct": ans["option"] == q["correct"],
+                "points": ans.get("points", 0),
             }
         )
+
+    # Guardamos el detalle de esta pregunta para poder exportarlo luego.
+    game.history.append(
+        {
+            "index": game.current_index,
+            "question": q["question"],
+            "options": q["options"],
+            "correct_option": q["correct"],
+            "results": results_per_player,
+        }
+    )
 
     socketio.emit(
         "reveal_answer",
         {
             "correct_option": q["correct"],
+            "explanation": q.get("explanation", ""),
             "counts": game.answer_stats(),
             "results_per_player": results_per_player,
             "leaderboard": game.leaderboard(),
@@ -386,6 +505,10 @@ def on_disconnect():
     sid = request.sid
     for game in GAMES.values():
         if sid in game.players:
+            # Si el juego ya terminó, conservamos el puntaje para poder
+            # exportarlo aunque el jugador cierre la pestaña.
+            if game.status == "finished":
+                break
             del game.players[sid]
             emit(
                 "players_update",

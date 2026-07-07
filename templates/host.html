@@ -9,6 +9,21 @@
 <body>
   <div class="wrap" style="max-width: 920px;">
 
+    {% if not authenticated %}
+    <!-- PANTALLA: login del organizador -->
+    <div class="card" id="loginScreen">
+      <h1>🔒 Acceso del organizador</h1>
+      <p class="muted">Ingresa la contraseña de organizador para crear salas.</p>
+      <form method="POST" action="/host">
+        <input type="password" name="password" placeholder="Contraseña de organizador" required autofocus>
+        <button type="submit" style="width:100%;">Ingresar</button>
+      </form>
+      {% if login_error %}
+        <p style="color:#ff8585; margin-top:14px;">❌ {{ login_error }}</p>
+      {% endif %}
+    </div>
+    {% else %}
+
     <!-- PANTALLA: crear sala -->
     <div class="card" id="setupScreen">
       <h1>🖥️ Panel del organizador</h1>
@@ -16,6 +31,8 @@
       <button id="createRoomBtn">Crear sala nueva</button>
       <p class="muted center" style="margin-top:18px;">
         <a href="/admin" style="color:var(--accent2);">⚙️ Administrar preguntas</a>
+        &nbsp;·&nbsp;
+        <a href="/host/logout" style="color:var(--accent2);">Cerrar sesión</a>
       </p>
     </div>
 
@@ -52,6 +69,8 @@
       <h2>Respuesta correcta</h2>
       <div id="revealOptionsGrid" class="options-grid"></div>
 
+      <div id="explanationBox" class="explanation-box" style="display:none;"></div>
+
       <h3 style="margin-top:24px;">🏆 Ranking</h3>
       <div id="leaderboardDiv"></div>
 
@@ -63,12 +82,20 @@
       <h2>🎊 ¡Trivia finalizada!</h2>
       <h3>Ranking final</h3>
       <div id="finalLeaderboardDiv"></div>
-      <button onclick="location.reload()" style="margin-top:18px;">Crear otra sala</button>
+      <p class="flex-between" style="margin-top:18px; gap:12px;">
+        <button onclick="location.reload()">Crear otra sala</button>
+        <a id="exportResultsBtn" href="#" style="text-decoration:none;">
+          <button type="button">⬇️ Exportar resultados (CSV)</button>
+        </a>
+      </p>
     </div>
 
+    {% endif %}
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  {% if authenticated %}
   <script src="{{ url_for('static', filename='js/host.js') }}"></script>
+  {% endif %}
 </body>
 </html>

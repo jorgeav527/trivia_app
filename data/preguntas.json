@@ -1,31 +1,61 @@
 {
-  "title": "Trivia de Cultura General",
+  "title": "Trivia de sesgos cognitivos en coevaluación (Pares)",
   "time_per_question": 20,
   "questions": [
     {
-      "question": "¿Cuál es la capital de Perú?",
-      "options": ["Lima", "Cusco", "Arequipa", "Trujillo"],
-      "correct": 0
+      "question": "Carlos cometió un error grave en un reporte hace un mes, pero esta semana ayudó a todo el equipo a cerrar un proyecto difícil. Su compañera Ana lo evalúa de forma excelente enfocándose solo en lo que hizo esta última semana. ¿Qué sesgo ocurre?",
+      "options": [
+        "Sesgo de Confirmación",
+        "Efecto de Recencia",
+        "Efecto de Desempeño Pasado",
+        "Sesgo de Proximidad"
+      ],
+      "correct": 1,
+      "explanation": "Es Efecto de Recencia: el evaluador le da un peso desproporcionado a los eventos más recientes y deja de lado el desempeño de todo el periodo evaluado."
     },
     {
-      "question": "¿Cuántos continentes hay?",
-      "options": ["5", "6", "7", "8"],
-      "correct": 2
+      "question": "Sofía opina que su compañero Juan es un excelente comunicador. Debido a esto, en la coevaluación asume automáticamente que Juan también tiene un gran desempeño técnico y habilidades de liderazgo. ¿Qué sesgo ocurre?",
+      "options": [
+        "Efecto Halo",
+        "Efecto de Contraste",
+        "Sesgo de Similitud",
+        "Sesgo de Centralidad y Extremalidad"
+      ],
+      "correct": 0,
+      "explanation": "Es Efecto Halo: una impresión positiva en una sola característica (comunicación) se generaliza a otras competencias sin evidencia real que lo respalde."
     },
     {
-      "question": "¿Quién pintó la Mona Lisa?",
-      "options": ["Picasso", "Da Vinci", "Van Gogh", "Miguel Ángel"],
-      "correct": 1
+      "question": "Luis tiene que evaluar a cuatro compañeros. Para evitarse problemas, discusiones o tener que justificar notas altas o bajas, decide calificar a todos exactamente con la puntuación media de 'Cumple con las expectativas'. ¿Qué sesgo ocurre?",
+      "options": [
+        "Sesgo de Proximidad",
+        "Efecto de Desempeño Pasado",
+        "Sesgo de Centralidad y Extremalidad",
+        "Sesgo de Confirmación"
+      ],
+      "correct": 2,
+      "explanation": "Es Sesgo de Centralidad: el evaluador evita los extremos de la escala y agrupa a todos en el punto medio para no tener que justificar diferencias."
     },
     {
-      "question": "¿Cuál es el planeta más cercano al sol?",
-      "options": ["Venus", "Tierra", "Mercurio", "Marte"],
-      "correct": 2
+      "question": "A la hora de evaluar, Jose le otorga la nota máxima a Javier porque ambos estudiaron en la misma universidad, tienen los mismos pasatiempos y comparten la misma metodología estructurada para organizar el día a día. ¿Qué sesgo ocurre?",
+      "options": [
+        "Sesgo de Similitud",
+        "Efecto Halo",
+        "Sesgo de Proximidad",
+        "Efecto de Contraste"
+      ],
+      "correct": 0,
+      "explanation": "Es Sesgo de Similitud: el evaluador califica mejor a quienes se parecen a él (estudios, gustos, forma de trabajar), sin que eso refleje el desempeño real."
     },
     {
-      "question": "¿En qué año llegó el hombre a la Luna?",
-      "options": ["1965", "1969", "1972", "1959"],
-      "correct": 1
+      "question": "Daniel cree firmemente que su compañera Elena es desorganizada. Durante el trimestre, Elena entregó 19 reportes perfectos a tiempo y solo uno tarde. Daniel, al evaluarla, solo resalta el reporte tardío. ¿Qué sesgo ocurre?",
+      "options": [
+        "Efecto de Recencia",
+        "Sesgo de Confirmación",
+        "Efecto de Desempeño Pasado",
+        "Efecto de Contraste"
+      ],
+      "correct": 1,
+      "explanation": "Es Sesgo de Confirmación: el evaluador busca y resalta solo la evidencia que confirma su creencia previa, ignorando la mayoría de datos que la contradicen."
     }
   ]
 }

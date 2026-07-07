@@ -132,6 +132,14 @@ socket.on('reveal_answer', (data) => {
     el.classList.add(i === data.correct_option ? 'correct' : 'incorrect');
   });
 
+  const explanationBox = document.getElementById('explanationBox');
+  if (data.explanation && data.explanation.trim()) {
+    explanationBox.textContent = `💡 ${data.explanation}`;
+    explanationBox.style.display = 'block';
+  } else {
+    explanationBox.style.display = 'none';
+  }
+
   renderLeaderboard('leaderboardDiv', data.leaderboard);
 });
 
@@ -139,6 +147,11 @@ socket.on('game_finished', (data) => {
   clearInterval(timerInterval);
   showScreen('finished');
   renderLeaderboard('finalLeaderboardDiv', data.leaderboard);
+
+  const exportBtn = document.getElementById('exportResultsBtn');
+  if (exportBtn && roomCode) {
+    exportBtn.href = `/api/export_results/${roomCode}`;
+  }
 });
 
 function renderLeaderboard(containerId, leaderboard) {
