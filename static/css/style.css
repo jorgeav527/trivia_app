@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
 :root {
   /* --- Colores de Marca --- */
   --blanco-humo: #F5F5F5;
@@ -9,11 +10,11 @@
   --rosado-oscuro: #FF0066;
 
   /* --- Asignación a la interfaz --- */
-  --bg: var(--blanco-humo);
-  --panel: #FFFFFF;
+  --bg: var(--gris-corporativo);
+  --panel: #F5F5F5;
   --text: var(--gris-corporativo);
   --muted: #6b6b6b;
-  --accent: var(--rojo-labios);       /* Botones principales y CTA */
+  --accent: var(--azul-ceruleo);       /* Botones principales y CTA */
   --accent2: var(--azul-ceruleo);     /* Títulos, acentos secundarios y enlaces */
   --accent3: var(--amapola-dorada);   /* Texto resaltado, timer y primer puesto */
   --accent4: var(--rosado-oscuro);    /* Keywords y badges */
@@ -23,7 +24,7 @@
 
 body {
   margin: 0;
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: "Montserrat", system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -114,7 +115,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .opt-0 { background: var(--rojo-labios); }
 .opt-1 { background: var(--azul-tradicional); }
 .opt-2 { background: var(--amapola-dorada); color: var(--gris-corporativo); }
-.opt-3 { background: var(--rosado-oscuro); }
+.opt-3 { background: var(--gris-corporativo); color: var(--blanco-humo); }
 
 .opt-btn.correct { outline: 4px solid #2ecc71; outline-offset: 2px; }
 .opt-btn.incorrect { outline: 4px solid #e74c3c; opacity: .6; }
@@ -129,7 +130,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 .timer-bar {
   height: 100%;
-  background: var(--amapola-dorada);
+  background: var(--azul-ceruleo);
   width: 100%;
   transition: width .25s linear;
 }
