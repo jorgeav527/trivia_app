@@ -112,8 +112,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   font-weight: 600;
 }
 
-.opt-0 { background: var(--rojo-labios); }
-.opt-1 { background: var(--azul-tradicional); }
+.opt-0 { background: var(--rojo-labios); color: var(--gris-corporativo); }
+.opt-1 { background: var(--azul-tradicional); color: var(--blanco-humo); }
 .opt-2 { background: var(--amapola-dorada); color: var(--gris-corporativo); }
 .opt-3 { background: var(--gris-corporativo); color: var(--blanco-humo); }
 
@@ -203,7 +203,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   margin-top: 14px;
   font-size: .95rem;
   line-height: 1.4;
-  color: var(--azul-tradicional);
+  color: var(--gris-corporativo);
   font-weight: 600;
 }
 
@@ -218,7 +218,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   font-size: .8rem;
   letter-spacing: .05em;
   text-transform: uppercase;
-  color: var(--azul-tradicional);
+  color: var(--gris-corporativo);
   margin-bottom: 8px;
   font-weight: 700;
 }
@@ -255,7 +255,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   align-items: center;
   gap: 10px;
   font-weight: 700;
-  color: var(--azul-tradicional);
+  color: var(--gris-corporativo);
 }
 
 .q-badge {
@@ -357,7 +357,7 @@ textarea.q-input:focus {
 
 .add-question-btn {
   background: rgba(0,0,0,.04);
-  color: var(--azul-tradicional);
+  color: var(--gris-corporativo);
   width: 100%;
   padding: 14px;
   border: 1px dashed rgba(0,0,0,.2);
