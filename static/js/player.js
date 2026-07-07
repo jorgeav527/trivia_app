@@ -79,8 +79,33 @@ function sendAnswer(optionIndex, grid) {
   document.getElementById('answeredMsg').style.display = 'block';
 }
 
-socket.on('your_score_update', (data) => {
+function renderPersonalMessage(containerId, status) {
+  const box = document.getElementById(containerId);
+  if (!box || !status) return;
+
+  if (status.in_top5) {
+    box.className = 'personal-message podium';
+    box.innerHTML = `🏆 ¡Estás en el podio! Puesto #${status.rank} con ${status.score} puntos`;
+  } else {
+    let msg = `Puesto actual: #${status.rank} de ${status.total_players} · ${status.score} puntos`;
+    if (typeof status.points_to_next === 'number' && status.points_to_next > 0) {
+      msg += ` · A ${status.points_to_next} puntos de superar al siguiente puesto`;
+    }
+    box.className = 'personal-message';
+    box.innerHTML = msg;
+  }
+  box.style.display = 'block';
+}
+
+// Guarda el último estado personal recibido para poder pintarlo en
+// cuanto la pantalla correspondiente (resultado o fin de juego) se muestre.
+let lastStatus = null;
+
+socket.on('your_status_update', (data) => {
+  lastStatus = data;
   document.getElementById('scoreBadge').textContent = `${data.score} pts`;
+  renderPersonalMessage('resultPersonalMsg', data);
+  renderPersonalMessage('finalPersonalMsg', data);
 });
 
 socket.on('reveal_answer', (data) => {
@@ -107,12 +132,18 @@ socket.on('reveal_answer', (data) => {
     explanationBox.style.display = 'none';
   }
 
+  renderPersonalMessage('resultPersonalMsg', lastStatus);
+  document.getElementById('leaderboardTitle').textContent =
+    data.total_players > 5 ? '🏆 Top 5' : '🏆 Ranking';
   renderLeaderboard('leaderboardDiv', data.leaderboard);
 });
 
 socket.on('game_finished', (data) => {
   clearInterval(timerInterval);
   showScreen('finished');
+  renderPersonalMessage('finalPersonalMsg', lastStatus);
+  document.getElementById('finalLeaderboardTitle').textContent =
+    data.total_players > 5 ? '🏆 Top 5 final' : '🏆 Ranking final';
   renderLeaderboard('finalLeaderboardDiv', data.leaderboard);
 });
 

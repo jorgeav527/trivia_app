@@ -136,11 +136,17 @@ class GameState:
             "time_limit": self.time_per_question,
         }
 
-    def leaderboard(self):
+    def full_ranking(self):
+        """Lista completa (sid, datos_jugador) ordenada de mayor a menor puntaje."""
+        return sorted(
+            self.players.items(), key=lambda kv: kv[1]["score"], reverse=True
+        )
+
+    def leaderboard(self, limit=5):
         ranking = sorted(
             self.players.values(), key=lambda p: p["score"], reverse=True
         )
-        return [{"name": p["name"], "score": p["score"]} for p in ranking]
+        return [{"name": p["name"], "score": p["score"]} for p in ranking[:limit]]
 
     def answer_stats(self):
         """Conteo de respuestas por opción para la pregunta actual."""
@@ -205,31 +211,19 @@ def play(room_code):
 
 @app.route("/admin")
 def admin():
-    """Pantalla para subir un nuevo banco de preguntas (.json)."""
+    """Panel para crear/editar el banco de preguntas desde una interfaz web."""
     quiz_data = cargar_preguntas()
     return render_template(
         "admin.html",
         current_title=quiz_data.get("title", ""),
         current_count=len(quiz_data.get("questions", [])),
+        quiz_data=quiz_data,
     )
 
 
-@app.route("/api/upload_quiz", methods=["POST"])
-def api_upload_quiz():
-    password = request.form.get("password", "")
-    if password != ADMIN_PASSWORD:
-        return jsonify({"ok": False, "error": "Contraseña incorrecta."}), 401
-
-    file = request.files.get("quiz_file")
-    if not file or file.filename == "":
-        return jsonify({"ok": False, "error": "No se seleccionó ningún archivo."}), 400
-
-    try:
-        raw = file.read().decode("utf-8")
-        data = json.loads(raw)
-    except (UnicodeDecodeError, json.JSONDecodeError) as e:
-        return jsonify({"ok": False, "error": f"El archivo no es un JSON válido: {e}"}), 400
-
+def _guardar_quiz_y_responder(data):
+    """Valida, guarda en disco y arma la respuesta JSON comun
+    para los dos caminos de guardado (formulario web y archivo subido)."""
     es_valido, error = validar_quiz(data)
     if not es_valido:
         return jsonify({"ok": False, "error": error}), 400
@@ -247,6 +241,45 @@ def api_upload_quiz():
             "count": len(data["questions"]),
         }
     )
+
+
+@app.route("/api/save_quiz", methods=["POST"])
+def api_save_quiz():
+    """Guarda la trivia construida directamente desde el formulario web
+    del panel de administracion (sin necesidad de preparar un .json a mano)."""
+    payload = request.get_json(silent=True)
+    if payload is None:
+        return jsonify({"ok": False, "error": "Solicitud invalida (se esperaba JSON)."}), 400
+
+    password = payload.get("password", "")
+    if password != ADMIN_PASSWORD:
+        return jsonify({"ok": False, "error": "Contraseña incorrecta."}), 401
+
+    data = payload.get("quiz")
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "Falta la informacion de la trivia."}), 400
+
+    return _guardar_quiz_y_responder(data)
+
+
+@app.route("/api/upload_quiz", methods=["POST"])
+def api_upload_quiz():
+    """Ruta alterna: subir directamente un archivo .json ya preparado."""
+    password = request.form.get("password", "")
+    if password != ADMIN_PASSWORD:
+        return jsonify({"ok": False, "error": "Contraseña incorrecta."}), 401
+
+    file = request.files.get("quiz_file")
+    if not file or file.filename == "":
+        return jsonify({"ok": False, "error": "No se seleccionó ningún archivo."}), 400
+
+    try:
+        raw = file.read().decode("utf-8")
+        data = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        return jsonify({"ok": False, "error": f"El archivo no es un JSON válido: {e}"}), 400
+
+    return _guardar_quiz_y_responder(data)
 
 
 @app.route("/api/create_room", methods=["POST"])
@@ -379,7 +412,7 @@ def on_start_question(data):
     if q is None:
         # No hay más preguntas -> fin del juego
         game.status = "finished"
-        emit("game_finished", {"leaderboard": game.leaderboard()}, room=room_code)
+        broadcast_leaderboard_and_status(room_code, game, "game_finished")
         return
 
     game.status = "question"
@@ -389,6 +422,32 @@ def on_start_question(data):
 
     # Disparamos el cierre automático de la pregunta cuando se acaba el tiempo
     socketio.start_background_task(auto_close_question, room_code, game.current_index)
+
+
+def broadcast_leaderboard_and_status(room_code, game, event_name, extra=None):
+    """Emite el ranking (solo Top 5) a toda la sala, y ademas le manda a
+    cada jugador su propio puesto/puntaje/mensaje personalizado por su
+    canal privado (sid). Se usa tanto al revelar una pregunta como al
+    finalizar la trivia."""
+    full_ranking = game.full_ranking()
+    top5 = [{"name": p["name"], "score": p["score"]} for _, p in full_ranking[:5]]
+
+    payload = dict(extra or {})
+    payload["leaderboard"] = top5
+    payload["total_players"] = len(full_ranking)
+    socketio.emit(event_name, payload, room=room_code)
+
+    for rank, (sid, pdata) in enumerate(full_ranking, start=1):
+        status = {
+            "score": pdata["score"],
+            "rank": rank,
+            "total_players": len(full_ranking),
+            "in_top5": rank <= 5,
+        }
+        if rank > 5:
+            prev_score = full_ranking[rank - 2][1]["score"]
+            status["points_to_next"] = max(0, prev_score - pdata["score"])
+        socketio.emit("your_status_update", status, room=sid)
 
 
 def auto_close_question(room_code, index_at_start):
@@ -479,25 +538,17 @@ def close_question(room_code):
         }
     )
 
-    socketio.emit(
+    broadcast_leaderboard_and_status(
+        room_code,
+        game,
         "reveal_answer",
-        {
+        extra={
             "correct_option": q["correct"],
             "explanation": q.get("explanation", ""),
             "counts": game.answer_stats(),
             "results_per_player": results_per_player,
-            "leaderboard": game.leaderboard(),
         },
-        room=room_code,
     )
-
-    # Mandar a cada jugador su puntaje individual actualizado
-    for sid in game.players:
-        socketio.emit(
-            "your_score_update",
-            {"score": game.players[sid]["score"]},
-            room=sid,
-        )
 
 
 @socketio.on("disconnect")

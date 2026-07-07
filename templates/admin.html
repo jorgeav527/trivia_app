@@ -3,56 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - Subir preguntas</title>
+  <title>Admin - Editor de preguntas</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap" style="max-width: 880px;">
     <div class="card">
-      <h1>⚙️ Administrar preguntas</h1>
-
-      <p class="muted">
-        Trivia actual: <strong>{{ current_title }}</strong>
-        ({{ current_count }} pregunta{{ 's' if current_count != 1 else '' }})
+      <div class="flex-between">
+        <h1 style="margin:0;">⚙️ Administrar preguntas</h1>
+        <span class="count-pill" id="countPill">{{ current_count }} pregunta{{ 's' if current_count != 1 else '' }}</span>
+      </div>
+      <p class="muted" style="margin-top:8px;">
+        Arma tu trivia directamente aquí: no necesitas preparar ningún archivo .json a mano.
       </p>
 
-      <hr style="border-color: rgba(255,255,255,.1); margin: 20px 0;">
+      <hr style="border-color: rgba(255,255,255,.1); margin: 22px 0;">
 
-      <h3>Subir nuevo archivo de preguntas (.json)</h3>
+      <div class="admin-section-label">1. Configuración de la trivia</div>
+      <div class="admin-config-grid">
+        <div>
+          <label class="muted" style="font-size:.85rem;">Título de la trivia</label>
+          <input type="text" id="quizTitleInput" placeholder="Título de la trivia">
+        </div>
+        <div>
+          <label class="muted" style="font-size:.85rem;">Tiempo (segundos)</label>
+          <input type="number" id="quizTimeInput" min="5" step="1" placeholder="20">
+        </div>
+      </div>
 
-      <form id="uploadForm">
-        <input type="password" id="password" placeholder="Contraseña de administrador" required>
-        <input type="file" id="quizFile" accept=".json,application/json" required
-               style="background:#fff; color:#222; padding:10px; border-radius:10px; width:100%; margin-bottom:14px;">
-        <button type="submit" style="width:100%;">Subir y reemplazar preguntas</button>
-      </form>
+      <div class="flex-between" style="margin-top:28px;">
+        <div class="admin-section-label" style="margin-bottom:0;">2. Preguntas</div>
+        <span class="count-pill" id="questionCountPill">0 preguntas</span>
+      </div>
+
+      <div id="questionsContainer" style="margin-top:16px;"></div>
+
+      <button class="add-question-btn" id="addQuestionBtn" type="button">+ Añadir nueva pregunta</button>
+
+      <hr style="border-color: rgba(255,255,255,.1); margin: 24px 0;">
+
+      <label class="muted" style="font-size:.85rem;">Contraseña de administrador</label>
+      <input type="password" id="adminPassword" placeholder="Contraseña de administrador">
+
+      <div class="admin-toolbar">
+        <button class="save-quiz-btn" id="saveQuizBtn" type="button">💾 Guardar y Generar JSON</button>
+      </div>
 
       <p id="statusMsg" style="margin-top:14px;"></p>
 
-      <hr style="border-color: rgba(255,255,255,.1); margin: 20px 0;">
-
-      <h3>Formato esperado del archivo .json</h3>
-      <p class="muted">Copia esta estructura como punto de partida:</p>
-      <pre style="background:#15152e; padding:14px; border-radius:10px; overflow-x:auto; font-size:.8rem;">{
-  "title": "Nombre de tu trivia",
-  "time_per_question": 20,
-  "questions": [
-    {
-      "question": "¿Cuál es la capital de Perú?",
-      "options": ["Lima", "Cusco", "Arequipa", "Trujillo"],
-      "correct": 0,
-      "explanation": "Lima es la capital y ciudad más poblada del Perú desde su fundación en 1535."
-    }
-  ]
-}</pre>
-      <p class="muted">
-        <code>correct</code> es el número de posición (empezando en 0) de la opción correcta
-        dentro de <code>options</code>. Puedes incluir tantas preguntas como quieras dentro de la lista.
-      </p>
-      <p class="muted">
-        <code>explanation</code> es opcional: si lo incluyes, aparecerá debajo de la respuesta correcta
-        cuando el organizador la revele, tanto en su pantalla como en la de cada jugador.
-      </p>
+      <details style="margin-top:26px;">
+        <summary class="muted" style="cursor:pointer;">¿Prefieres importar un archivo .json ya preparado?</summary>
+        <form id="uploadForm" style="margin-top:14px;">
+          <input type="password" id="uploadPassword" placeholder="Contraseña de administrador" required>
+          <input type="file" id="quizFile" accept=".json,application/json" required
+                 style="background:#fff; color:#222; padding:10px; border-radius:10px; width:100%; margin-bottom:14px;">
+          <button type="submit" style="width:100%;">Subir y reemplazar preguntas</button>
+        </form>
+        <p id="uploadStatusMsg" style="margin-top:10px;"></p>
+      </details>
 
       <p class="muted center" style="margin-top:24px;">
         <a href="/host" style="color:var(--accent2);">← Volver al panel del organizador</a>
@@ -61,18 +69,236 @@
   </div>
 
   <script>
-    const form = document.getElementById('uploadForm');
+    const initialQuiz = {{ quiz_data | tojson }};
+
+    const quizState = {
+      title: initialQuiz.title || '',
+      time_per_question: initialQuiz.time_per_question || 20,
+      questions: (initialQuiz.questions || []).map(q => ({
+        question: q.question || '',
+        options: Array.isArray(q.options) ? [...q.options] : ['', ''],
+        correct: typeof q.correct === 'number' ? q.correct : 0,
+        explanation: q.explanation || '',
+      })),
+    };
+
+    const titleInput = document.getElementById('quizTitleInput');
+    const timeInput = document.getElementById('quizTimeInput');
+    const container = document.getElementById('questionsContainer');
+    const questionCountPill = document.getElementById('questionCountPill');
+    const countPill = document.getElementById('countPill');
     const statusMsg = document.getElementById('statusMsg');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      statusMsg.textContent = 'Subiendo…';
-      statusMsg.style.color = 'var(--muted)';
+    titleInput.value = quizState.title;
+    timeInput.value = quizState.time_per_question;
 
-      const password = document.getElementById('password').value;
+    titleInput.addEventListener('input', () => { quizState.title = titleInput.value; });
+    timeInput.addEventListener('input', () => {
+      quizState.time_per_question = parseInt(timeInput.value, 10) || 20;
+    });
+
+    function updateCountPills() {
+      const n = quizState.questions.length;
+      const label = `${n} pregunta${n !== 1 ? 's' : ''}`;
+      questionCountPill.textContent = label;
+      countPill.textContent = label;
+    }
+
+    function renderQuestions() {
+      container.innerHTML = '';
+
+      quizState.questions.forEach((q, qIndex) => {
+        const card = document.createElement('div');
+        card.className = 'question-card';
+
+        // ---- Encabezado ----
+        const header = document.createElement('div');
+        header.className = 'question-card-header';
+        header.innerHTML = `
+          <div class="q-title">
+            <span class="q-badge">${qIndex + 1}</span>
+            <span>Configuración de pregunta</span>
+          </div>
+        `;
+        const delBtn = document.createElement('button');
+        delBtn.className = 'icon-btn';
+        delBtn.type = 'button';
+        delBtn.title = 'Eliminar pregunta';
+        delBtn.textContent = '🗑️';
+        delBtn.addEventListener('click', () => {
+          quizState.questions.splice(qIndex, 1);
+          renderQuestions();
+        });
+        header.appendChild(delBtn);
+        card.appendChild(header);
+
+        // ---- Texto de la pregunta ----
+        const qTextarea = document.createElement('textarea');
+        qTextarea.className = 'q-input';
+        qTextarea.placeholder = 'Escribe aquí el enunciado de la pregunta';
+        qTextarea.value = q.question;
+        qTextarea.addEventListener('input', () => { q.question = qTextarea.value; });
+        card.appendChild(qTextarea);
+
+        // ---- Opciones ----
+        const optsLabel = document.createElement('div');
+        optsLabel.className = 'admin-section-label';
+        optsLabel.style.marginTop = '14px';
+        optsLabel.textContent = 'Opciones (selecciona la correcta)';
+        card.appendChild(optsLabel);
+
+        const optsGrid = document.createElement('div');
+        optsGrid.className = 'options-config-grid';
+
+        q.options.forEach((optText, oIndex) => {
+          const row = document.createElement('div');
+          row.className = 'option-row';
+
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = `correct-${qIndex}`;
+          radio.checked = q.correct === oIndex;
+          radio.addEventListener('change', () => { q.correct = oIndex; });
+
+          const textInput = document.createElement('input');
+          textInput.type = 'text';
+          textInput.placeholder = `Opción ${oIndex + 1}`;
+          textInput.value = optText;
+          textInput.addEventListener('input', () => { q.options[oIndex] = textInput.value; });
+
+          row.appendChild(radio);
+          row.appendChild(textInput);
+
+          if (q.options.length > 2) {
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-opt';
+            removeBtn.textContent = '✕';
+            removeBtn.title = 'Quitar opción';
+            removeBtn.addEventListener('click', () => {
+              q.options.splice(oIndex, 1);
+              if (q.correct >= q.options.length) q.correct = 0;
+              renderQuestions();
+            });
+            row.appendChild(removeBtn);
+          }
+
+          optsGrid.appendChild(row);
+        });
+
+        card.appendChild(optsGrid);
+
+        if (q.options.length < 6) {
+          const addOptBtn = document.createElement('button');
+          addOptBtn.type = 'button';
+          addOptBtn.className = 'add-opt-btn';
+          addOptBtn.textContent = '+ Añadir opción';
+          addOptBtn.addEventListener('click', () => {
+            q.options.push('');
+            renderQuestions();
+          });
+          card.appendChild(addOptBtn);
+        }
+
+        // ---- Explicación ----
+        const explField = document.createElement('div');
+        explField.className = 'explanation-field';
+        explField.innerHTML = `<div class="admin-section-label">Explicación (opcional - se muestra al revelar respuesta)</div>`;
+        const explTextarea = document.createElement('textarea');
+        explTextarea.className = 'q-input';
+        explTextarea.placeholder = 'Por qué esta es la respuesta correcta...';
+        explTextarea.value = q.explanation;
+        explTextarea.addEventListener('input', () => { q.explanation = explTextarea.value; });
+        explField.appendChild(explTextarea);
+        card.appendChild(explField);
+
+        container.appendChild(card);
+      });
+
+      updateCountPills();
+    }
+
+    document.getElementById('addQuestionBtn').addEventListener('click', () => {
+      quizState.questions.push({
+        question: '',
+        options: ['', '', '', ''],
+        correct: 0,
+        explanation: '',
+      });
+      renderQuestions();
+    });
+
+    function validarLocalmente() {
+      if (!quizState.title.trim()) return 'Ponle un título a la trivia.';
+      if (quizState.questions.length === 0) return 'Añade al menos una pregunta.';
+      for (let i = 0; i < quizState.questions.length; i++) {
+        const q = quizState.questions[i];
+        if (!q.question.trim()) return `La pregunta #${i + 1} no tiene texto.`;
+        const validOpts = q.options.filter(o => o.trim());
+        if (validOpts.length < 2) return `La pregunta #${i + 1} necesita al menos 2 opciones con texto.`;
+        if (!q.options[q.correct] || !q.options[q.correct].trim()) {
+          return `La pregunta #${i + 1}: selecciona una opción correcta con texto.`;
+        }
+      }
+      return null;
+    }
+
+    document.getElementById('saveQuizBtn').addEventListener('click', async () => {
+      const localError = validarLocalmente();
+      if (localError) {
+        statusMsg.style.color = '#ff8585';
+        statusMsg.textContent = `❌ ${localError}`;
+        return;
+      }
+
+      const password = document.getElementById('adminPassword').value;
+      statusMsg.style.color = 'var(--muted)';
+      statusMsg.textContent = 'Guardando…';
+
+      const quizPayload = {
+        title: quizState.title.trim(),
+        time_per_question: quizState.time_per_question,
+        questions: quizState.questions.map(q => ({
+          question: q.question.trim(),
+          options: q.options.map(o => o.trim()).filter(o => o),
+          correct: q.correct,
+          explanation: q.explanation.trim(),
+        })),
+      };
+
+      try {
+        const res = await fetch('/api/save_quiz', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password, quiz: quizPayload }),
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          statusMsg.style.color = '#6fcf97';
+          statusMsg.textContent = `✅ Listo. "${data.title}" guardada con ${data.count} preguntas.`;
+        } else {
+          statusMsg.style.color = '#ff8585';
+          statusMsg.textContent = `❌ ${data.error}`;
+        }
+      } catch (err) {
+        statusMsg.style.color = '#ff8585';
+        statusMsg.textContent = '❌ Ocurrió un error al guardar.';
+      }
+    });
+
+    // ---- Importar archivo .json (opcional / avanzado) ----
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadStatusMsg = document.getElementById('uploadStatusMsg');
+
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      uploadStatusMsg.textContent = 'Subiendo…';
+      uploadStatusMsg.style.color = 'var(--muted)';
+
+      const password = document.getElementById('uploadPassword').value;
       const fileInput = document.getElementById('quizFile');
       const file = fileInput.files[0];
-
       if (!file) return;
 
       const formData = new FormData();
@@ -84,18 +310,20 @@
         const data = await res.json();
 
         if (data.ok) {
-          statusMsg.style.color = '#6fcf97';
-          statusMsg.textContent = `✅ Listo. "${data.title}" cargada con ${data.count} preguntas.`;
-          form.reset();
+          uploadStatusMsg.style.color = '#6fcf97';
+          uploadStatusMsg.textContent = `✅ Listo. "${data.title}" cargada con ${data.count} preguntas. Recargando…`;
+          setTimeout(() => window.location.reload(), 900);
         } else {
-          statusMsg.style.color = '#ff8585';
-          statusMsg.textContent = `❌ ${data.error}`;
+          uploadStatusMsg.style.color = '#ff8585';
+          uploadStatusMsg.textContent = `❌ ${data.error}`;
         }
       } catch (err) {
-        statusMsg.style.color = '#ff8585';
-        statusMsg.textContent = '❌ Ocurrió un error al subir el archivo.';
+        uploadStatusMsg.style.color = '#ff8585';
+        uploadStatusMsg.textContent = '❌ Ocurrió un error al subir el archivo.';
       }
     });
+
+    renderQuestions();
   </script>
 </body>
 </html>
