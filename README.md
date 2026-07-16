@@ -108,3 +108,5 @@ igual que en Kahoot. Las respuestas incorrectas valen 0 puntos.
 - Soportar imágenes en las preguntas.
 - Exportar resultados a Excel/CSV al finalizar.
 - Autenticación para que solo tú puedas crear salas como host.
+
+hola 
